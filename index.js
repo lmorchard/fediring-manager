@@ -1,60 +1,25 @@
 #!/usr/bin/env node
 /*
 TODO:
-
 - [x] periodic promo of 5 random members to follow
 - [ ] request an add via mention or DM
 - [ ] approve an add via mention or DM
-- [ ] request removal by member
+- [x] request removal by member
 - [ ] perform removal by admin
 - [ ] alter role for a member (member, admin, etc)
 */
-
-import fs, { constants } from "fs/promises";
-import { createReadStream } from "fs";
-import path from "path";
-import { exec as execCb } from "child_process";
-import { parse as csvParser } from "csv-parse";
-import mkdirp from "mkdirp";
-import rmfr from "rmfr";
 import * as Cheerio from "cheerio";
 import Mastotron from "mastotron";
 
 import GitMixin from "./mixins/git.js";
 import CommandsMixin from "./mixins/commands.js";
 
-const MEMBER_MENTION_TEMPLATE = ({ selectedMembers = [] }) =>
-  `
-Say hello to a few of our members!
-
-${selectedMembers.map((member) => `- @${member}`).join("\n")}
-`.trim();
-
 async function main() {
   return new FediringManager().run();
 }
 
-class PermissionDeniedError extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "PermissionDeniedError";
-  }
-}
-
 class FediringManagerBase extends Mastotron {
   static dataName = "fediring";
-
-  constructor(options) {
-    super(options);
-    const { program } = this;
-    // program.command("play").action(() => this.actionPlay());
-  }
-
-  async actionPlay() {
-    const { profilesFn } = this.gitConfig();
-    const log = this.logBot();
-    await this.mentionMembers();
-  }
 
   configSchema() {
     return {
@@ -131,16 +96,6 @@ class FediringManagerBase extends Mastotron {
         errorMessage: error.message,
       });
     }
-  }
-
-  parseCSV(readStream) {
-    return new Promise((resolve, reject) => {
-      const parser = csvParser({}, (err, data) => {
-        if (err) reject(err);
-        else resolve(data);
-      });
-      readStream.pipe(parser);
-    });
   }
 }
 

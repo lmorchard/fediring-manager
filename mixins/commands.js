@@ -1,5 +1,20 @@
 import fs from "fs/promises";
 import { createReadStream } from "fs";
+import { parse as csvParser } from "csv-parse";
+
+class PermissionDeniedError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "PermissionDeniedError";
+  }
+}
+
+const MEMBER_MENTION_TEMPLATE = ({ selectedMembers = [] }) =>
+  `
+Say hello to a few of our members!
+
+${selectedMembers.map((member) => `- @${member}`).join("\n")}
+`.trim();
 
 export default (Base) =>
   class extends Base {
@@ -21,12 +36,22 @@ export default (Base) =>
       }
     }
 
+    parseCSV(readStream) {
+      return new Promise((resolve, reject) => {
+        const parser = csvParser({}, (err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+        readStream.pipe(parser);
+      });
+    }
+
     async requireAdminAccount({ account }) {
       const { config } = this;
       const { acct } = account;
       const log = this.logBot();
 
-      log.debug({ msg: "requireAdminAccount", account });
+      log.trace({ msg: "requireAdminAccount", account });
 
       const adminAccounts = config.get("adminAccounts");
       if (!adminAccounts.includes(acct)) {
