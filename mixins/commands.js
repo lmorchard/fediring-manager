@@ -1,7 +1,3 @@
-import fs from "fs/promises";
-import { createReadStream } from "fs";
-import { parse as csvParser } from "csv-parse";
-
 class PermissionDeniedError extends Error {
   constructor(message) {
     super(message);
@@ -9,19 +5,21 @@ class PermissionDeniedError extends Error {
   }
 }
 
-const MEMBER_MENTION_TEMPLATE = ({ selectedMembers = [] }) =>
-  `
-Say hello to a few of our members!
-
-${selectedMembers.map((member) => `- @${member}`).join("\n")}
-`.trim();
-
 export default (Base) =>
   class extends Base {
+    constructor(options) {
+      super(options);
+      const { program } = this;
+
+      program.command("play").action(() => {
+        this.mentionMembers();
+      });
+    }
+
     static commandTokens = {
-      add: "handleCommandAdd",
-      remove: "handleCommandRemove",
-      mention: "handleCommandMention",
+      add: "commandAdd",
+      remove: "commandRemove",
+      mention: "commandMention",
     };
 
     configSchema() {
@@ -33,17 +31,51 @@ export default (Base) =>
           nullable: true,
           default: null,
         },
-      }
+      };
     }
 
-    parseCSV(readStream) {
-      return new Promise((resolve, reject) => {
-        const parser = csvParser({}, (err, data) => {
-          if (err) reject(err);
-          else resolve(data);
-        });
-        readStream.pipe(parser);
+    async commandMention({ account }) {
+      await this.requireAdminAccount({ account });
+      await this.mentionMembers();
+    }
+
+    async commandAdd({ params, account }) {
+      const members = await this.acceptMembersFromParams({ params, account });
+      const profiles = await this.fetchProfiles();
+      await this.writeProfiles([
+        ...profiles,
+        ...members.map((member) => [member]),
+      ]);
+    }
+
+    async commandRemove({ params, account }) {
+      const members = await this.acceptMembersFromParams({ params, account });
+      const profiles = await this.fetchProfiles();
+      await this.writeProfiles(
+        profiles.filter((row) => !members.includes(row[0]))
+      );
+    }
+
+    async mentionMembers() {
+      const { config } = this;
+      const log = this.logBot();
+
+      const template = await this.getTemplate("mention-members");
+      const members = await this.selectRandomMembers({
+        count: config.get("memberMentionCount"),
       });
+      const status = template({ members });
+
+      const resp = this.postStatus({ status, visibility: "public" });
+      log.trace({ msg: "mentionMembersPosted", resp });
+    }
+
+    async acceptMembersFromParams({ params, account }) {
+      if (params[0] == "me") {
+        return [account.acct];
+      }
+      await this.requireAdminAccount({ account });
+      return params;
     }
 
     async requireAdminAccount({ account }) {
@@ -57,107 +89,5 @@ export default (Base) =>
       if (!adminAccounts.includes(acct)) {
         throw new PermissionDeniedError(`${acct} is not an admin account`);
       }
-    }
-
-    async handleCommandMention({ account }) {
-      await this.requireAdminAccount({ account });
-      await this.mentionMembers();
-    }
-
-    async handleCommandAdd({ params, account }) {
-      const { profilesFn } = this.gitConfig();
-      const log = this.logBot();
-
-      let members;
-      if (params[0] == "me") {
-        members = [account.acct];
-      } else {
-        await this.requireAdminAccount({ account });
-        members = params;
-      }
-
-      await this.gitUpdateClone();
-
-      const readStream = createReadStream(profilesFn);
-      const profiles = await this.parseCSV(readStream);
-      const out = [...profiles, ...members.map((member) => [member])]
-        .map((row) => row.join(","))
-        .join("\n");
-
-      await fs.writeFile(profilesFn, out);
-
-      await this.gitPush();
-    }
-
-    async handleCommandRemove({ params, account }) {
-      const { profilesFn } = this.gitConfig();
-      const log = this.logBot();
-
-      let members;
-      if (params[0] == "me") {
-        members = [account.acct];
-      } else {
-        await this.requireAdminAccount({ account });
-        members = params;
-      }
-
-      await this.gitUpdateClone();
-
-      const readStream = createReadStream(profilesFn);
-      const profiles = await this.parseCSV(readStream);
-      const out = profiles
-        .filter((row) => !members.includes(row[0]))
-        .map((row) => row.join(","))
-        .join("\n");
-
-      await fs.writeFile(profilesFn, out);
-
-      await this.gitPush();
-    }
-
-    async mentionMembers() {
-      const { config } = this;
-      const log = this.logBot();
-
-      const selectedMembers = await this.selectRandomMembers({
-        count: config.get("memberMentionCount"),
-      });
-      const status = MEMBER_MENTION_TEMPLATE({ selectedMembers });
-
-      log.debug({ status });
-      console.log(status);
-
-      /*
-    const resp = this.postStatus({ status, visibility: "public" });
-    log.trace({ msg: "mentionMembersPosted", resp });
-    */
-    }
-
-    async selectRandomMembers({ count = 5, maxHistoryRatio = 0.5 } = {}) {
-      const { dataName } = this.constructor;
-      const { profilesFn } = this.gitConfig();
-
-      await this.gitUpdateClone();
-      const readStream = createReadStream(profilesFn);
-      const profiles = await this.parseCSV(readStream);
-      profiles.shift();
-
-      const { selectionHistory = [] } = await this.loadJSON(dataName);
-
-      const selection = profiles
-        .map((row) => row[0])
-        .filter((addr) => !selectionHistory.includes(addr))
-        .sort(() => Math.random() - 0.5)
-        .slice(0, count);
-
-      const maxHistory = Math.floor(profiles.length * maxHistoryRatio);
-      await this.updateJSON(dataName, {
-        selectionHistory: [...selection, ...selectionHistory].slice(
-          0,
-          maxHistory
-        ),
-      });
-
-      return selection;
     }
   };

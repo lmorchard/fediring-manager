@@ -12,6 +12,7 @@
   "dependencies": {
     "cheerio": "^1.0.0-rc.12",
     "csv-parse": "^5.3.3",
+    "handlebars": "^4.7.7",
     "mastotron": "lmorchard/mastotron",
     "mkdirp": "^1.0.4",
     "nodemon": "^2.0.20",

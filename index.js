@@ -12,6 +12,8 @@ import * as Cheerio from "cheerio";
 import Mastotron from "mastotron";
 
 import GitMixin from "./mixins/git.js";
+import TemplatesMixin from "./mixins/templates.js";
+import ProfilesMixin from "./mixins/profiles.js";
 import CommandsMixin from "./mixins/commands.js";
 
 async function main() {
@@ -89,7 +91,6 @@ class FediringManagerBase extends Mastotron {
       log.debug({ msg: "mentioned", command, params, content });
       await handler.apply(this, [args]);
     } catch (error) {
-      console.error(error);
       log.error({
         msg: "command failed",
         errorName: error.name,
@@ -99,10 +100,12 @@ class FediringManagerBase extends Mastotron {
   }
 }
 
-export const FediringManager = [GitMixin, CommandsMixin].reduce(
-  (base, mixin) => mixin(base),
-  FediringManagerBase
-);
+export const FediringManager = [
+  GitMixin,
+  TemplatesMixin,
+  ProfilesMixin,
+  CommandsMixin,
+].reduce((base, mixin) => mixin(base), FediringManagerBase);
 
 export default FediringManager;
 
