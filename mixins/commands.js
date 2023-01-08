@@ -7,21 +7,6 @@ class PermissionDeniedError extends Error {
 
 export default (Base) =>
   class extends Base {
-    constructor(options) {
-      super(options);
-      const { program } = this;
-
-      program.command("play").action(() => {
-        this.mentionMembers();
-      });
-    }
-
-    static commandTokens = {
-      add: "commandAdd",
-      remove: "commandRemove",
-      mention: "commandMention",
-    };
-
     configSchema() {
       return {
         ...super.configSchema(),
@@ -34,9 +19,77 @@ export default (Base) =>
       };
     }
 
+    static commands = [
+      {
+        token: "help",
+        method: "commandHelp",
+        description: "get help on supported commands",
+        usage: "help",
+      },
+      {
+        token: "random",
+        method: "commandRandom",
+        description: "Mention one random member from the ring",
+        usage: "random",
+      },
+      {
+        token: "add",
+        method: "commandAdd",
+        description: "Add a new member to the ring",
+        usage: "add me",
+      },
+      {
+        token: "remove",
+        method: "commandRemove",
+        description: "Remote an existing member from the ring",
+        usage: "remove me",
+      },
+      {
+        token: "mention",
+        method: "commandMention",
+        description: "Mention a random selection of members from the ring",
+        usage: "mention",
+        admin: true,
+      },
+    ];
+
+    async commandHelp({ account, status }) {
+      const { id, visibility } = status;
+      const isAdmin = this.isAdminAccount({ account });
+      const commands = this.constructor.commands.filter(
+        (command) => !command.admin || isAdmin
+      );
+      await this.postTemplatedStatus({
+        name: "command-help",
+        variables: { commands, account },
+        options: { visibility, in_reply_to_id: id },
+      });
+    }
+
+    async commandRandom({ account, status }) {
+      const { id, visibility } = status;
+      const [member] = await this.selectRandomMembers({ count: 1 });
+      await this.postTemplatedStatus({
+        name: "command-random",
+        variables: { member, account },
+        options: { visibility, in_reply_to_id: id },
+      });
+    }
+
     async commandMention({ account }) {
       await this.requireAdminAccount({ account });
       await this.mentionMembers();
+    }
+
+    async mentionMembers() {
+      const { config } = this;
+      const members = await this.selectRandomMembers({
+        count: config.get("memberMentionCount"),
+      });
+      await this.postTemplatedStatus({
+        name: "mention-members",
+        variables: { members },
+      });
     }
 
     async commandAdd({ params, account }) {
@@ -56,18 +109,23 @@ export default (Base) =>
       );
     }
 
-    async mentionMembers() {
+    async isAdminAccount({ account }) {
       const { config } = this;
+      const { acct } = account;
       const log = this.logBot();
+      log.trace({ msg: "isAdminAccount", account });
+      const adminAccounts = config.get("adminAccounts");
+      return adminAccounts.includes(acct);
+    }
 
-      const template = await this.getTemplate("mention-members");
-      const members = await this.selectRandomMembers({
-        count: config.get("memberMentionCount"),
-      });
-      const status = template({ members });
-
-      const resp = this.postStatus({ status, visibility: "public" });
-      log.trace({ msg: "mentionMembersPosted", resp });
+    async requireAdminAccount({ account }) {
+      const log = this.logBot();
+      log.trace({ msg: "requireAdminAccount", account });
+      if (!this.isAdminAccount({ account })) {
+        throw new PermissionDeniedError(
+          `${account.acct} is not an admin account`
+        );
+      }
     }
 
     async acceptMembersFromParams({ params, account }) {
@@ -76,18 +134,5 @@ export default (Base) =>
       }
       await this.requireAdminAccount({ account });
       return params;
-    }
-
-    async requireAdminAccount({ account }) {
-      const { config } = this;
-      const { acct } = account;
-      const log = this.logBot();
-
-      log.trace({ msg: "requireAdminAccount", account });
-
-      const adminAccounts = config.get("adminAccounts");
-      if (!adminAccounts.includes(acct)) {
-        throw new PermissionDeniedError(`${acct} is not an admin account`);
-      }
     }
   };

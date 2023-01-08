@@ -8,6 +8,24 @@ export default (Base) =>
       super(options);
 
       this._templates = {};
+      this.handlebars = Handlebars.create();
+
+      this.handlebars.registerHelper("randomchoices", function (options) {
+        console.log(options);
+        this._randomChoices = [];
+        options.fn(this);
+        const output =
+          this._randomChoices[
+            Math.floor(Math.random() * this._randomChoices.length)
+          ];
+        delete this._randomChoices;
+        return output;
+      });
+      
+      this.handlebars.registerHelper("choice", function (options) {
+        if (!this._randomChoices) return;
+        this._randomChoices.push(options.fn(this));
+      });
     }
 
     configSchema() {
@@ -30,8 +48,18 @@ export default (Base) =>
           `${name}.hbs`
         );
         const templateSource = await fs.readFile(templatePath);
-        this._templates[name] = Handlebars.compile(templateSource.toString());
+        this._templates[name] = this.handlebars.compile(templateSource.toString());
       }
       return this._templates[name];
+    }
+
+    async postTemplatedStatus({
+      name,
+      variables = {},
+      options = { visibility: "public" },
+    }) {
+      const template = await this.getTemplate(name);
+      const status = template(variables);
+      return this.postStatus({ status, ...options });
     }
   };

@@ -67,7 +67,8 @@ class FediringManagerBase extends Mastotron {
   }
 
   async onMentioned({ account, status }) {
-    const { commandTokens } = this.constructor;
+    const { commands } = this.constructor;
+    const { id, visibility } = status;
     const { content } = status;
     const log = this.logBot();
 
@@ -76,27 +77,34 @@ class FediringManagerBase extends Mastotron {
       .split(/[\n\r\s]+/g)
       .filter((word) => !word.startsWith("@"));
 
-    const commandTokenIdx = tokens.findIndex((token) => !!commandTokens[token]);
-    if (commandTokenIdx == -1) {
-      log.debug({ msg: "unknown command", tokens });
+    for (const command of commands) {
+      const commandTokenIdx = tokens.indexOf(command.token);
+      if (commandTokenIdx == -1) continue;
+
+      const [commandToken, ...params] = tokens.slice(commandTokenIdx);
+      const handler = this[command.method];
+      const args = { command: commandToken, params, account, status };
+
+      try {
+        log.debug({ msg: "command", command: commandToken, params, content });
+        await handler.apply(this, [args]);
+      } catch (error) {
+        log.error({
+          msg: "command failed",
+          errorName: error.name,
+          errorMessage: error.message,
+        });
+      }
+
       return;
     }
 
-    const [command, ...params] = tokens.slice(commandTokenIdx);
-    const handlerName = commandTokens[command];
-    const handler = this[handlerName];
-    const args = { command, params, account, status };
-
-    try {
-      log.debug({ msg: "mentioned", command, params, content });
-      await handler.apply(this, [args]);
-    } catch (error) {
-      log.error({
-        msg: "command failed",
-        errorName: error.name,
-        errorMessage: error.message,
-      });
-    }
+    log.debug({ msg: "unknown command", tokens });
+    await this.postTemplatedStatus({
+      name: "unknown-command",
+      variables: { account },
+      options: { visibility, in_reply_to_id: id },
+    });
   }
 }
 
