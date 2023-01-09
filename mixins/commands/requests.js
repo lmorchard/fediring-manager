@@ -1,5 +1,22 @@
 import { Model, ModelArray } from "../../lib/models.js";
 
+export class DeferredRequest extends Model {
+  constructor({ request, from } = {}) {
+    super({ request, from });
+  }
+  key() {
+    return this.request;
+  }
+  toJSON() {
+    const { request, from } = this;
+    return { request, from };
+  }
+}
+
+export class DeferredRequestArray extends ModelArray {
+  static ChildClass = DeferredRequest;
+}
+
 export default (Base) =>
   class extends Base {
     mentionCommands() {
@@ -124,20 +141,3 @@ export default (Base) =>
       });
     }
   };
-
-export class DeferredRequest extends Model {
-  constructor({ request, from } = {}) {
-    super({ request, from });
-  }
-  key() {
-    return this.request;
-  }
-  toJSON() {
-    const { request, from } = this;
-    return { request, from };
-  }
-}
-
-export class DeferredRequestArray extends ModelArray {
-  static ChildClass = DeferredRequest;
-}

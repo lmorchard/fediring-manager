@@ -6,13 +6,13 @@ export default (Base) =>
         {
           token: "add",
           method: "commandAdd",
-          description: "Add a new member",
+          description: "Add a new member (e.g. add me)",
           usage: "add me",
         },
         {
           token: "remove",
           method: "commandRemove",
-          description: "Remote an existing member",
+          description: "Remote an existing member (e.g. remove me)",
           usage: "remove me",
         },
         {
