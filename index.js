@@ -6,6 +6,7 @@ TODO:
 - [x] request removal by member
 - [ ] perform removal by admin
 - [ ] alter role for a member (member, admin, etc)
+- [ ] Split up longer messages into several, to not run afoul of character limit
 */
 import Mastotron from "mastotron";
 

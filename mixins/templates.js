@@ -57,8 +57,10 @@ export default (Base) =>
       variables = {},
       options = { visibility: "public" },
     }) {
+      const log = this.logBot();      
       const template = await this.getTemplate(name);
       const status = template(variables);
+      log.trace({ msg: "postTemplatedStatus", name, status, options });
       return this.postStatus({ status, ...options });
     }
   };
