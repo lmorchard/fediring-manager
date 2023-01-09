@@ -29,6 +29,23 @@ export default (Base) =>
       });
     }
 
+    async addMembers({ members }) {
+      const profiles = await this.fetchProfiles();
+      // TODO: dedupe members after add?
+      await this.writeProfiles([
+        ...profiles,
+        // TODO: support CSV with multiple columns 😞
+        ...members.map((member) => [member]),
+      ]);
+    }
+
+    async removeMembers({ members }) {
+      const profiles = await this.fetchProfiles();
+      await this.writeProfiles(
+        profiles.filter((row) => !members.includes(row[0]))
+      );
+    }
+
     async selectRandomMembers({ count = 5 } = {}) {
       const { dataName } = this.constructor;
       let { selectionHistory = [] } = await this.loadJSON(dataName);
