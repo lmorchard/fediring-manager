@@ -1,12 +1,9 @@
 #!/usr/bin/env node
 /*
 TODO:
-- [ ] request an add via mention or DM
-- [ ] approve an add via mention or DM
-- [x] request removal by member
-- [ ] perform removal by admin
 - [ ] alter role for a member (member, admin, etc)
 - [ ] Split up longer messages into several, to not run afoul of character limit
+- [ ] queue up git changes serially, so that two simultaneous operations don't collide
 */
 import Mastotron from "mastotron";
 
