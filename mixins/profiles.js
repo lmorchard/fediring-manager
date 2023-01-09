@@ -18,6 +18,16 @@ export default (Base) =>
       await fs.writeFile(profilesFn, out);
       return this.gitPush();
     }
+  
+    parseCSV(readStream) {
+      return new Promise((resolve, reject) => {
+        const parser = csvParser({}, (err, data) => {
+          if (err) reject(err);
+          else resolve(data);
+        });
+        readStream.pipe(parser);
+      });
+    }
 
     async selectRandomMembers({ count = 5 } = {}) {
       const { dataName } = this.constructor;
@@ -51,15 +61,5 @@ export default (Base) =>
       });
 
       return selection;
-    }
-  
-    parseCSV(readStream) {
-      return new Promise((resolve, reject) => {
-        const parser = csvParser({}, (err, data) => {
-          if (err) reject(err);
-          else resolve(data);
-        });
-        readStream.pipe(parser);
-      });
     }
   };

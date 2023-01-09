@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 /*
 TODO:
-- [x] periodic promo of 5 random members to follow
 - [ ] request an add via mention or DM
 - [ ] approve an add via mention or DM
 - [x] request removal by member
 - [ ] perform removal by admin
 - [ ] alter role for a member (member, admin, etc)
 */
-import * as Cheerio from "cheerio";
 import Mastotron from "mastotron";
 
 import GitMixin from "./mixins/git.js";
@@ -52,59 +50,11 @@ class FediringManagerBase extends Mastotron {
     log.trace({ msg: "interval" });
 
     await this.scheduleCallback(
-      "lastGitUpdate",
-      dataName,
-      config.get("gitUpdateInterval"),
-      () => this.gitUpdateClone()
-    );
-
-    await this.scheduleCallback(
       "lastMemberMention",
       dataName,
       config.get("memberMentionInterval"),
       () => this.mentionMembers()
     );
-  }
-
-  async onMentioned({ account, status }) {
-    const { commands } = this.constructor;
-    const { id, visibility } = status;
-    const { content } = status;
-    const log = this.logBot();
-
-    const tokens = Cheerio.load(content.replaceAll("<br />", "\n"))
-      .text()
-      .split(/[\n\r\s]+/g)
-      .filter((word) => !word.startsWith("@"));
-
-    for (const command of commands) {
-      const commandTokenIdx = tokens.indexOf(command.token);
-      if (commandTokenIdx == -1) continue;
-
-      const [commandToken, ...params] = tokens.slice(commandTokenIdx);
-      const handler = this[command.method];
-      const args = { command: commandToken, params, account, status };
-
-      try {
-        log.debug({ msg: "command", command: commandToken, params, content });
-        await handler.apply(this, [args]);
-      } catch (error) {
-        log.error({
-          msg: "command failed",
-          errorName: error.name,
-          errorMessage: error.message,
-        });
-      }
-
-      return;
-    }
-
-    log.debug({ msg: "unknown command", tokens });
-    await this.postTemplatedStatus({
-      name: "unknown-command",
-      variables: { account },
-      options: { visibility, in_reply_to_id: id },
-    });
   }
 }
 

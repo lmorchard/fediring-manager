@@ -36,6 +36,20 @@ export default (Base) =>
       };
     }
 
+    async onInterval() {
+      super.onInterval();
+
+      const { dataName } = this.constructor;
+      const { config } = this;
+  
+      await this.scheduleCallback(
+        "lastGitUpdate",
+        dataName,
+        config.get("gitUpdateInterval"),
+        () => this.gitUpdateClone()
+      );
+    }
+  
     gitConfig() {
       const { config } = this;
 

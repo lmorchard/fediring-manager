@@ -11,7 +11,6 @@ export default (Base) =>
       this.handlebars = Handlebars.create();
 
       this.handlebars.registerHelper("randomchoices", function (options) {
-        console.log(options);
         this._randomChoices = [];
         options.fn(this);
         const output =

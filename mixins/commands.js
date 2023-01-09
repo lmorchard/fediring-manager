@@ -1,3 +1,5 @@
+import * as Cheerio from "cheerio";
+
 class PermissionDeniedError extends Error {
   constructor(message) {
     super(message);
@@ -19,44 +21,86 @@ export default (Base) =>
       };
     }
 
-    static commands = [
-      {
-        token: "help",
-        method: "commandHelp",
-        description: "get help on supported commands",
-        usage: "help",
-      },
-      {
-        token: "random",
-        method: "commandRandom",
-        description: "Mention one random member from the ring",
-        usage: "random",
-      },
-      {
-        token: "add",
-        method: "commandAdd",
-        description: "Add a new member to the ring",
-        usage: "add me",
-      },
-      {
-        token: "remove",
-        method: "commandRemove",
-        description: "Remote an existing member from the ring",
-        usage: "remove me",
-      },
-      {
-        token: "mention",
-        method: "commandMention",
-        description: "Mention a random selection of members from the ring",
-        usage: "mention",
-        admin: true,
-      },
-    ];
+    mentionCommands() {
+      return [
+        {
+          token: "help",
+          method: "commandHelp",
+          description: "get help on supported commands",
+          usage: "help",
+        },
+        {
+          token: "random",
+          method: "commandRandom",
+          description: "Mention one random member from the ring",
+          usage: "random",
+        },
+        {
+          token: "add",
+          method: "commandAdd",
+          description: "Add a new member to the ring",
+          usage: "add me",
+        },
+        {
+          token: "remove",
+          method: "commandRemove",
+          description: "Remote an existing member from the ring",
+          usage: "remove me",
+        },
+        {
+          token: "mention",
+          method: "commandMention",
+          description: "Mention a random selection of members from the ring",
+          usage: "mention",
+          admin: true,
+        },
+      ];
+    }
+
+    async onMentioned({ account, status }) {
+      const { id, visibility } = status;
+      const { content } = status;
+      const log = this.logBot();
+
+      const tokens = Cheerio.load(content.replaceAll("<br />", "\n"))
+        .text()
+        .split(/[\n\r\s]+/g)
+        .filter((word) => !word.startsWith("@"));
+
+      for (const command of this.mentionCommands()) {
+        const commandTokenIdx = tokens.indexOf(command.token);
+        if (commandTokenIdx == -1) continue;
+
+        const [commandToken, ...params] = tokens.slice(commandTokenIdx);
+        const handler = this[command.method];
+        const args = { command: commandToken, params, account, status };
+
+        try {
+          log.debug({ msg: "command", command: commandToken, params, content });
+          await handler.apply(this, [args]);
+        } catch (error) {
+          log.error({
+            msg: "command failed",
+            errorName: error.name,
+            errorMessage: error.message,
+          });
+        }
+
+        return;
+      }
+
+      log.debug({ msg: "unknown command", tokens });
+      await this.postTemplatedStatus({
+        name: "unknown-command",
+        variables: { account },
+        options: { visibility, in_reply_to_id: id },
+      });
+    }
 
     async commandHelp({ account, status }) {
       const { id, visibility } = status;
       const isAdmin = this.isAdminAccount({ account });
-      const commands = this.constructor.commands.filter(
+      const commands = this.mentionCommands().filter(
         (command) => !command.admin || isAdmin
       );
       await this.postTemplatedStatus({
