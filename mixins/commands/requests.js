@@ -17,8 +17,11 @@ export class DeferredRequestArray extends ModelArray {
   static ChildClass = DeferredRequest;
 }
 
-export default (Base) =>
-  class extends Base {
+/**
+ * @param {ReturnType<import("./index.js").CommandsIndexMixin>} Base
+ */
+export default function RequestsCommandsMixin(Base) {
+  return class RequestsCommandsBase extends Base {
     mentionCommands() {
       return [
         ...super.mentionCommands(),
@@ -141,3 +144,4 @@ export default (Base) =>
       });
     }
   };
+}

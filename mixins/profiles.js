@@ -2,9 +2,11 @@ import fs from "fs/promises";
 import { createReadStream } from "fs";
 import { parse as csvParser } from "csv-parse";
 
+/** 
+ * @param {ReturnType<import("./templates.js").default>} Base 
+ */
 export default (Base) =>
-  class extends Base {
-
+  class ProfilesMixin extends Base {
     async fetchProfiles() {
       const { profilesFn } = this.gitConfig();
       await this.gitUpdateClone();

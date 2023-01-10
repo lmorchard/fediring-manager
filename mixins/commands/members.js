@@ -1,5 +1,8 @@
-export default (Base) =>
-  class extends Base {
+/**
+ * @param {ReturnType<import("./requests.js").default>} Base
+ */
+export default function MembersCommandsMixin(Base) {
+  return class MembersCommandsBase extends Base {
     mentionCommands() {
       return [
         ...super.mentionCommands(),
@@ -129,3 +132,4 @@ export default (Base) =>
       });
     }
   };
+}

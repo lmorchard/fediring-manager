@@ -1,6 +1,6 @@
 import * as Cheerio from "cheerio";
 
-import MemberCommandsMixin from "./members.js";
+import MembersCommandsMixin from "./members.js";
 import RequestsCommandsMixin from "./requests.js";
 
 class PermissionDeniedError extends Error {
@@ -10,8 +10,11 @@ class PermissionDeniedError extends Error {
   }
 }
 
-const CommandsMixinBase = (Base) =>
-  class extends Base {
+/**
+ * @param {ReturnType<import("../profiles.js").default>} Base
+ */
+export function CommandsIndexMixin(Base) {
+  return class CommandsIndexMixinBase extends Base {
     configSchema() {
       return {
         ...super.configSchema(),
@@ -132,9 +135,23 @@ const CommandsMixinBase = (Base) =>
       return params;
     }
   };
+}
 
-export default (Base) =>
-  [RequestsCommandsMixin, MemberCommandsMixin].reduce(
+/**
+ * @param {ReturnType<import("../profiles.js").default>} Base
+ */
+export default function CommandsMixin(Base) {
+  return class CommandsMixinBase extends MembersCommandsMixin(
+    RequestsCommandsMixin(CommandsIndexMixin(Base))
+  ) {};
+}
+
+/**
+ * param {ReturnType<import("../profiles.js").default>} Base
+export default function CommandsMixin(Base) {
+  return [RequestsCommandsMixin, MembersCommandsMixin].reduce(
     (base, mixin) => mixin(base),
     CommandsMixinBase(Base)
   );
+}
+ */

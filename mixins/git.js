@@ -4,8 +4,11 @@ import { exec as execCb } from "child_process";
 import mkdirp from "mkdirp";
 import rmfr from "rmfr";
 
-export default (Base) =>
-  class extends Base {
+/**
+ * @param {import("../index.js").FediringManagerBase} Base
+ */
+export default function GitMixin(Base) {
+  return class GitMixinBase extends Base {
     configSchema() {
       return {
         ...super.configSchema(),
@@ -41,7 +44,7 @@ export default (Base) =>
 
       const { dataName } = this.constructor;
       const { config } = this;
-  
+
       await this.scheduleCallback(
         "lastGitUpdate",
         dataName,
@@ -49,7 +52,7 @@ export default (Base) =>
         () => this.gitUpdateClone()
       );
     }
-  
+
     gitConfig() {
       const { config } = this;
 
@@ -139,3 +142,4 @@ export default (Base) =>
       await this.exec(`${git} push`, execOptions);
     }
   };
+}

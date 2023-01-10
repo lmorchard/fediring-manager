@@ -2,8 +2,11 @@ import fs from "fs/promises";
 import path from "path";
 import Handlebars from "handlebars";
 
+/**
+ * @param {ReturnType<import("./git.js").default>} Base
+ */
 export default (Base) =>
-  class extends Base {
+  class TemplatesMixin extends Base {
     constructor(options) {
       super(options);
 
